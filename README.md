@@ -1,7 +1,7 @@
 # EnlightFusion
 Code of EnlightFusion:It is an infrared and visible light image fusion algorithm specifically designed for low-light environments.
 ## Tips:<br>
-Due to file size issues, the training set has been removed from the code and the MSRS dataset can be downloaded here: https://github.com/Linfeng-Tang/MSRS
+Due to file size issues, the training set has been removed from the code and the MSRS dataset can be downloaded here: https://pan.baidu.com/s/18q_3IEHKZ48YBy2PzsOtRQ?pwd=MSRS
 Place the downloaded training dataset under: MSRS/ path.
 
 ## To Train
