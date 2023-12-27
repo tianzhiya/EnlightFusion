@@ -25,7 +25,7 @@ from FusionNet import FusionNet
 from TaskFusion_dataset import Fusion_dataset
 from loss import Fusionloss
 
-parser = argparse.ArgumentParser("SCI")
+parser = argparse.ArgumentParser("LLIET")
 parser.add_argument('--batch_size', type=int, default=1, help='batch size')
 parser.add_argument('--cuda', default=True, type=bool, help='Use CUDA to train model')
 parser.add_argument('--gpu', type=int, default='0', help='gpu device id')
@@ -176,8 +176,9 @@ def saveTrainOrTestEnlightenImageY(isTrainIsTest, image_name, inputTest_ycrcb, r
             np.max(fused_image) - np.min(fused_image)
     )
     fused_image = np.uint8(255.0 * fused_image)
-    fused_dir = os.path.join('./LowerLightEnhance/', 'out')
-    os.makedirs(fused_dir, mode=0o777, exist_ok=True)
+    # fused_dir = os.path.join('./LowerLightEnhance/', 'out')
+    os.makedirs(mTrainOutSavePath, mode=0o777, exist_ok=True)
+    os.makedirs(mTestOutSavePath, mode=0o777, exist_ok=True)
     for k in range(len(image_name)):
         image = fused_image[k, :, :, :]
         image = image.squeeze()
