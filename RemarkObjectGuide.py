@@ -8,7 +8,9 @@ class SIM(nn.Module):
         super().__init__()
 
         self.param_free_norm = nn.InstanceNorm2d(norm_nc, affine=False, track_running_stats=False)
-
+        # self.param_free_norm = nn.BatchNorm2d(norm_nc, affine=False)
+        # The dimension of the intermediate embedding space. Yes, hardcoded.
+        # nhidden = 128
         self.mlp_shared = nn.Sequential(
             nn.Conv2d(label_nc, nhidden, kernel_size=3, padding=1),
             nn.ReLU()
@@ -21,10 +23,15 @@ class SIM(nn.Module):
         self.bn = nn.BatchNorm2d(num_features=norm_nc)
 
     def forward(self, x, segmap):
+        # Part 1. generate parameter-free normalized activations
         normalizedX = self.param_free_norm(x)
-        segmap = F.interpolate(segmap, size=x.size()[2:], mode='bilinear')
+        # Part 2. produce scaling and bias conditioned on semantic map
+        segmap = F.interpolate(segmap, size=x.size()[2:], mode='bilinear')  # (4,64,128,128)
         actv = self.mlp_shared(segmap)
+        # actv = segmap
         gamma = self.mlp_gamma(actv)
         beta = self.mlp_beta(actv)
+        # apply scale and bias
         out = self.bn(normalizedX * (1 + gamma)) + beta
+
         return out

@@ -34,10 +34,11 @@ def prepare_data_path(dataset_path):
 class Fusion_dataset(Dataset):
     def __init__(self, split, ir_path=None, vi_path=None):
         super(Fusion_dataset, self).__init__()
-        assert split in ['train', 'val', 'enLightIntrain',
-                         'test'], 'split must be "train"|"val"|"test"|"enLightIntrain"'
+        assert split in ['train', 'enLightIntrain', 'val',
+                         'test'], 'split must be "train"|"enLightIntrain"|"val"|"test"'
 
         if split == 'train':
+            # data_dir_vis = './MSRS/Visible/train/Sci1083/'
             data_dir_vis = './MSRS/Visible/train/MSRS/'
             data_dir_ir = './MSRS/Infrared/train/MSRS/'
             data_dir_bi = './MSRS/Bi/'
@@ -63,9 +64,12 @@ class Fusion_dataset(Dataset):
             self._tensor = transforms.ToTensor()
 
         elif split == 'test':
+            # data_dir_vis = './lianHeXuLian/EnlightOut/TestOut/'
             data_dir_ir = './MSRS/Infrared/test/MSRS/'
-            data_dir_vis = './lianHeXuLian/EnlightOut/TestOut/'
-
+            data_dir_vis = './MSRS/Visible/test/MSRS/'
+            # data_dir_vis = './lianHeXuLian/EnlightOut/TestOut/'
+            # data_dir_ir = './LLVIP/ir/'
+            # data_dir_ir = './RoadScene/ir/'
             self.filepath_vis, self.filenames_vis = prepare_data_path(data_dir_vis)
             self.filepath_ir, self.filenames_ir = prepare_data_path(data_dir_ir)
             self.split = split
@@ -73,7 +77,6 @@ class Fusion_dataset(Dataset):
 
     def __getitem__(self, index):
         if self.split == 'train' or self.split == 'enLightIntrain':
-
             vis_path = self.filepath_vis[index]
             ir_path = self.filepath_ir[index]
             bi_path = self.filepath_bi[index]
@@ -127,7 +130,7 @@ class Fusion_dataset(Dataset):
 def bright_transform(x):
     image_temp = copy.deepcopy(x)
     orig_image = copy.deepcopy(x)
-    img_rows, img_cols, num_channels = x.shape
+    img_rows, img_cols, num_channels = x.shape  # 获取图像尺寸和通道数
     num_block = 10
 
     for _ in range(num_block):
@@ -136,10 +139,10 @@ def bright_transform(x):
         noise_x = random.randint(0, img_rows - block_noise_size_x)
         noise_y = random.randint(0, img_cols - block_noise_size_y)
 
-        for channel in range(num_channels):
+        for channel in range(num_channels):  # 对每个通道进行亮度变换
             window = orig_image[noise_x:noise_x + block_noise_size_x,
                      noise_y:noise_y + block_noise_size_y, channel]
-
+            # window = brightness_aug(window, 3 * np.random.random_sample())
             window = brightness_aug(window, 0.5 + 0.5 * np.random.random_sample())
 
             image_temp[noise_x:noise_x + block_noise_size_x,
@@ -180,6 +183,7 @@ def fourier_transform_color(x):
     orig_image = copy.deepcopy(x)
     img_rows, img_cols, num_channels = x.shape
     num_block = 10
+    import torch
 
     for _ in range(num_block):
         block_noise_size_x = random.randint(1, img_rows // 10)
@@ -212,3 +216,24 @@ def fourier_broken(x, nb_rows, nb_cols):
     fre_recon = fre_a_trans * np.e ** (1j * (fre_p_trans))
     img_recon = np.abs(np.fft.ifft2(fre_recon))
     return img_recon
+
+# if __name__ == '__main__':
+# data_dir = '/data1/yjt/MFFusion/dataset/'
+# train_dataset = MF_dataset(data_dir, 'train', have_label=True)
+# print("the training dataset is length:{}".format(train_dataset.length))
+# train_loader = DataLoader(
+#     dataset=train_dataset,
+#     batch_size=2,
+#     shuffle=True,
+#     num_workers=2,
+#     pin_memory=True,
+#     drop_last=True,
+# )
+# train_loader.n_iter = len(train_loader)
+# for it, (image_vis, image_ir, label) in enumerate(train_loader):
+#     if it == 5:
+#         image_vis.numpy()
+#         print(image_vis.shape)
+#         image_ir.numpy()
+#         print(image_ir.shape)
+#         break

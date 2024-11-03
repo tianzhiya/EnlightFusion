@@ -10,7 +10,9 @@ from Transformer.swin_transformer import SwinTransformer
 
 
 class ConvBnLeakyRelu2d(nn.Module):
-
+    # convolution
+    # batch normalization
+    # leaky relu
     def __init__(self, in_channels, out_channels, kernel_size=3, padding=1, stride=1, dilation=1, groups=1):
         super(ConvBnLeakyRelu2d, self).__init__()
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding, stride=stride,
@@ -33,24 +35,30 @@ class ConvBnTanh2d(nn.Module):
 
 
 class ConvLeakyRelu2d(nn.Module):
-
+    # convolution
+    # leaky relu
     def __init__(self, in_channels, out_channels, kernel_size=3, padding=1, stride=1, dilation=1, groups=1):
         super(ConvLeakyRelu2d, self).__init__()
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding, stride=stride,
                               dilation=dilation, groups=groups)
+        # self.bn   = nn.BatchNorm2d(out_channels)
 
     def forward(self, x):
+        # print(x.size())
         return F.leaky_relu(self.conv(x), negative_slope=0.2)
 
 
 class ReduceSwinTransformerC(nn.Module):
-
+    # convolution
+    # leaky relu
     def __init__(self, in_channels, out_channels, kernel_size=1, padding=0, stride=1, dilation=1, groups=1):
         super(ReduceSwinTransformerC, self).__init__()
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, padding=padding, stride=stride,
                               dilation=dilation, groups=groups)
+        # self.bn   = nn.BatchNorm2d(out_channels)
 
     def forward(self, x):
+        # print(x.size())
         return F.leaky_relu(self.conv(x), negative_slope=0.2)
 
 
@@ -89,10 +97,12 @@ class DenseBlock(nn.Module):
         super(DenseBlock, self).__init__()
         self.conv1 = ConvLeakyRelu2d(channels, channels)
         self.conv2 = ConvLeakyRelu2d(2 * channels, channels)
+        # self.conv3 = ConvLeakyRelu2d(3*channels, channels)
 
     def forward(self, x):
         x = torch.cat((x, self.conv1(x)), dim=1)
         x = torch.cat((x, self.conv2(x)), dim=1)
+        # x = torch.cat((x, self.conv3(x)), dim=1)
         return x
 
 
@@ -121,9 +131,12 @@ class FusionNet(nn.Module):
         self.vis_conv = ConvLeakyRelu2d(1, vis_ch[0])
         self.vis_rgbd1 = RGBD(vis_ch[0], vis_ch[1])
         self.vis_rgbd2 = RGBD(vis_ch[1], vis_ch[2])
+        # self.vis_rgbd3 = RGBD(vis_ch[2], vis_ch[3])
         self.inf_conv = ConvLeakyRelu2d(1, inf_ch[0])
         self.inf_rgbd1 = RGBD(inf_ch[0], inf_ch[1])
         self.inf_rgbd2 = RGBD(inf_ch[1], inf_ch[2])
+        # self.inf_rgbd3 = RGBD(inf_ch[2], inf_ch[3])
+        # self.decode5 = ConvBnLeakyRelu2d(vis_ch[3]+inf_ch[3], vis_ch[2]+inf_ch[2])
         self.decode4 = ConvBnLeakyRelu2d(vis_ch[2] + inf_ch[2] + inf_ch[2], vis_ch[1] + vis_ch[1])
         self.decode3 = ConvBnLeakyRelu2d(vis_ch[1] + inf_ch[1], vis_ch[0] + inf_ch[0])
         self.decode2 = ConvBnLeakyRelu2d(vis_ch[0] + inf_ch[0], vis_ch[0])
@@ -165,12 +178,29 @@ class FusionNet(nn.Module):
         self.irSEM2 = SEM(in_dim=48, out_dim=48)
 
     def forward(self, image_vis, image_ir):
+        # split data into RGB and INF
         x_vis_origin = image_vis[:, :1]
         x_inf_origin = image_ir
 
         height, width = image_vis.size(2), image_vis.size(3)
 
         x_vis_p = self.vis_conv(x_vis_origin)
+        # ----------------------------------------------------------------
+        # enhancelist, enhanceNoromlist, inlist, attlist = [], [], [], []
+        # input = x_vis_p
+        # input_op = input
+        # for i in range(self.stage):
+        #     inlist.append(self.visCoarseConv(input_op))
+        #     i = self.enhance(input_op)
+        #     r = input / i
+        #     r = torch.clamp(r, 0, 1)
+        #     r = self.grm(r)
+        #     r = torch.clamp(r, 0, 1)
+        #     att = self.calibrate(r)
+        #     input_op = input + att
+        #     enhancelist.append(self.visCoarseConv(i))
+        #     enhanceNoromlist.append(self.visCoarseConv(r))
+        #     attlist.append(torch.abs(self.visCoarseConv(att)))
 
         visTsfDownsampled_1, visTsfDownsampled_2 = self.swinTransformer(x_vis_origin)
         target_size = (height, width)
@@ -185,6 +215,7 @@ class FusionNet(nn.Module):
         infTsfUpsampled_1 = F.interpolate(infTsfDownsampled_2, size=(height, width), mode='bilinear',
                                           align_corners=False)
 
+        # encode
         x_vis_p1 = self.vis_rgbd1(x_vis_p)
         x_vis_p1 = self.visSEM1(x_vis_p1, visTSFReshape1)
         x_vis_p2 = self.vis_rgbd2(x_vis_p1)
@@ -204,6 +235,7 @@ class FusionNet(nn.Module):
 
         catF = torch.cat((x_vis_p2, x_inf_p2, reduceSwinTransformerC), dim=1)
 
+        # decode
         x = self.decode4(catF)
         features_seg_rec1 = self.sim1(x, seg_f)
         x = self.decode3(features_seg_rec1)
@@ -296,6 +328,7 @@ class CalibrateNetwork(nn.Module):
 class GRMModule(nn.Module):
     def __init__(self, in_channels, out_channels):
         super(GRMModule, self).__init__()
+        # 主要流: 两个3x3的卷积层，带有LeakyReLU，以及一个1x1的卷积层。
         self.main_stream = nn.Sequential(
             nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1),
             nn.LeakyReLU(inplace=True),
@@ -303,21 +336,30 @@ class GRMModule(nn.Module):
             nn.LeakyReLU(inplace=True),
             nn.Conv2d(out_channels, out_channels, kernel_size=1)
         )
+        # 第一个残差流: Sobel算子和1x1卷积层。
         self.sobel_operator = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1)
         self.residual_conv = nn.Conv2d(in_channels, out_channels, kernel_size=1)
+        # 第二个残差流: Laplacian算子。
         self.laplacian_operator = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1)
 
     def forward(self, x):
+        # 主要流
         main_out = self.main_stream(x)
+        # 第一个残差流
         sobel_out = self.gradient_feature(x)
         residual_out = self.residual_conv(x)
+        # 第二个残差流
         laplacian_out = self.laplacian(x)
+        # 纹理增强的第一阶段
         enhanced_texture = main_out + laplacian_out
+        # 合并主要流和第一个残差流
         combined_out = main_out + sobel_out + residual_out
+        # 纹理增强的第二阶段
         final_output = enhanced_texture + combined_out
         return final_output
 
     def gradient_feature(self, input_tensor):
+        # 计算Sobel卷积核的大小，每个通道的大小都相同
         sobel_kernel_x = torch.FloatTensor([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]])
         sobel_kernel_x = sobel_kernel_x.view(1, 1, 3, 3).expand(-1, input_tensor.size(1), -1, -1).to('cuda')
         sobel_kernel_y = sobel_kernel_x.permute(0, 1, 3, 2)
@@ -333,6 +375,7 @@ class GRMModule(nn.Module):
         return grad_norm
 
     def laplacian(self, input_tensor):
+        # 计算Laplacian卷积核的大小，每个通道的大小都相同
         laplacian_kernel = torch.FloatTensor([[0, 1, 0], [1, -4, 1], [0, 1, 0]])
         laplacian_kernel = laplacian_kernel.view(1, 1, 3, 3).expand(-1, input_tensor.size(1), -1, -1).to('cuda')
         gradient_orig = torch.abs(F.conv2d(input_tensor, laplacian_kernel, padding=1))
@@ -384,6 +427,7 @@ class BasicConv2d(nn.Module):
 
 
 class S2P2(nn.Module):
+    '''This path plays the role of a classifier and is responsible for predicting the results of semantic segmentation, binary segmentation and edge segmentation'''
 
     def __init__(self, feature=64):
         super(S2P2, self).__init__()
@@ -439,12 +483,14 @@ class ResBlock(nn.Module):
         return res
 
 
+# 基于特征刷选的融合网络
 def conv(in_channels, out_channels, kernel_size, bias=False, padding=1, stride=1):
     return nn.Conv2d(
         in_channels, out_channels, kernel_size,
         padding=(kernel_size // 2), bias=bias, stride=stride)
 
 
+# ========= Saliency-enhanced Module ========= #
 class SEM(nn.Module):
     def __init__(self, in_dim, out_dim):
         super(SEM, self).__init__()
@@ -456,6 +502,9 @@ class SEM(nn.Module):
 
         self.gamma_rf = nn.Parameter(torch.zeros(1))
         self.gamma_tf = nn.Parameter(torch.zeros(1))
+
+        # self.gamma_rf = 1.0
+        # self.gamma_tf = 1.0
 
         self.layer_transF = nn.Conv2d(out_dim, out_dim, kernel_size=3, stride=1, padding=1)
 
@@ -474,13 +523,16 @@ class UpsampleAndAdjustChannels(nn.Module):
         self.conv1x1 = nn.Conv2d(in_channels, out_channels, kernel_size=1)
 
     def forward(self, input_tensor, target_size):
+        # 上采样到目标大小
         upsampled_tensor = F.interpolate(input_tensor, size=target_size, mode='bilinear', align_corners=False)
 
+        # 使用 1x1 卷积调整通道数
         output_tensor = self.conv1x1(upsampled_tensor)
         return output_tensor
 
 
 class FuseModule(nn.Module):
+    """ Interactive fusion module"""
 
     def __init__(self, in_dim=64):
         super(FuseModule, self).__init__()
