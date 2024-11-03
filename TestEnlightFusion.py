@@ -16,7 +16,7 @@ from LowerLightEnhance.LowerLightEnhanceNetwork import LowerLightEnhanceNetwork
 from LowerLightEnhance.multi_read_data import MemoryFriendlyLoader
 from TaskFusion_dataset import Fusion_dataset
 from loss import Fusionloss
-from trainElightFuse import saveTrainOrTestEnlightenImageY
+from trainEnlightFusion import saveTrainOrTestEnlightenImageY
 
 
 def count_parameters(model):
