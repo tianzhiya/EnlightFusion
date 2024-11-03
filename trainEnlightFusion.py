@@ -189,7 +189,7 @@ def saveTrainOrTestEnlightenImageY(isTrainIsTest, image_name, inputTest_ycrcb, r
         else:
             u_path = mTestOutSavePath + '/' + u_name
         image.save(u_path)
-        print('LLIET {0} {1} Successfully!'.format(u_path, isTrainIsTest))
+        print("LLIET being processed, please wait .....")
 
 
 def run_Elight():
