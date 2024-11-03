@@ -185,8 +185,13 @@ def saveTrainOrTestEnlightenImageY(isTrainIsTest, image_name, inputTest_ycrcb, r
         u_name = '%s' % (image_name[k])
         if isTrainIsTest:
             u_path = mTrainOutSavePath + '/' + u_name
+            if not os.path.exists(mTrainOutSavePath):
+                os.makedirs(mTrainOutSavePath)
         else:
             u_path = mTestOutSavePath + '/' + u_name
+            if not os.path.exists(mTestOutSavePath):
+                os.makedirs(mTestOutSavePath)
+
         image.save(u_path)
         print('LLIET being processed, please wait .....')
 
